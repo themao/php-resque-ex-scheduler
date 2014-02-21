@@ -16,6 +16,16 @@ class ResqueScheduler
     // Should be as unique as possible
     const QUEUE_NAME = '_schdlr_';
 
+	/**
+	 * Remove a prefix from the given key
+	 *
+	 * @param string $key
+	 * @return string Key with removed prefix
+	 */
+	private static function _removePrefix($key) {
+		return substr($key, strpos($key, ':') + 1);
+	}
+
     /**
      * Enqueue a job in a given number of seconds from now.
      *
@@ -134,7 +144,7 @@ class ResqueScheduler
         $redis = \Resque::redis();
 
         foreach ($redis->keys(self::QUEUE_NAME . ':*') as $key) {
-            $key = $redis->removePrefix($key);
+            $key = self::_removePrefix($key);
             $destroyed += $redis->lrem($key, 0, $item);
         }
 
@@ -165,15 +175,41 @@ class ResqueScheduler
         return $count;
     }
 
-    /**
-     * Generate hash of all job properties to be saved in the scheduled queue.
-     *
-     * @param string $queue Name of the queue the job will be placed on.
-     * @param string $class Name of the job class.
-     * @param array  $args  Array of job arguments.
-     */
+	/**
+	 * Remove a job from the queue by unique hash
+	 *
+	 * @param string $id Job md5 unique id that was returned by enqueue method
+	 * @return int Number of removed list items
+	 */
+	public function removeDelayedJobById($id) {
+	    $redis = \Resque::redis();
+	    $removed = 0;
 
-    private static function jobToHash($queue, $class, $args, $trackStatus)
+	    // Iterate through the timestamps
+	    foreach ($redis->keys(self::QUEUE_NAME . ':*') as $key) {
+		    $key = self::_removePrefix($key);
+		    $list = $redis->lrange($key, 0, $redis->llen($key));
+		    foreach($list as $item) {
+			    $obj = json_decode($item);
+			    if($obj->track == true && $obj->args[0]->id == $id) {
+				    $removed += $redis->lrem($key, 0, json_encode($item));
+			    }
+		    }
+	    }
+
+	    return $removed;
+    }
+
+	/**
+	 * Generate hash of all job properties to be saved in the scheduled queue.
+	 *
+	 * @param string $queue Name of the queue the job will be placed on.
+	 * @param string $class Name of the job class.
+	 * @param array $args Array of job arguments
+	 * @param bool $trackStatus Ability to monitor the job status
+	 * @return array
+	 */
+	private static function jobToHash($queue, $class, $args, $trackStatus = false)
     {
         return array(
             'class' => $class,
