@@ -181,7 +181,7 @@ class ResqueScheduler
 	 * @param string $id Job md5 unique id that was returned by enqueue method
 	 * @return int Number of removed list items
 	 */
-	public function removeDelayedJobById($id) {
+	public static function removeDelayedJobById($id) {
 	    $redis = \Resque::redis();
 	    $removed = 0;
 
