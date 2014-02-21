@@ -193,6 +193,7 @@ class ResqueScheduler
 			    $obj = json_decode($item);
 			    if($obj->track == true && $obj->args[0]->id == $id) {
 				    $removed += $redis->lrem($key, $item, 0);
+				    $redis->delete("job:$id:status");
 			    }
 		    }
 	    }
