@@ -192,7 +192,7 @@ class ResqueScheduler
 		    foreach($list as $item) {
 			    $obj = json_decode($item);
 			    if($obj->track == true && $obj->args[0]->id == $id) {
-				    $removed += $redis->lrem($key, 0, json_encode($item));
+				    $removed += $redis->lrem($key, $item, 0);
 			    }
 		    }
 	    }
